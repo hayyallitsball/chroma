@@ -1,0 +1,2088 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>ChromaTone | Bilateral Frequency Modulator</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+      :root {
+        --bg-primary: #0a0a0f;
+        --bg-secondary: #15151f;
+        --bg-tertiary: #1f1f2e;
+        --accent-primary: #ff006e;
+        --accent-secondary: #8338ec;
+        --accent-tertiary: #3a86ff;
+        --text-primary: #ffffff;
+        --text-secondary: #a0a0b0;
+        --text-muted: #606070;
+        --gem-size: min(280px, 60vw);
+      }
+      body {
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        overflow-x: hidden;
+        min-height: 100vh;
+        position: relative;
+      }
+      .app-container {
+        max-width: 100%;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px;
+        position: relative;
+        z-index: 100;
+      }
+      .logo {
+        font-size: 1.5rem;
+        font-weight: 700;
+        background: linear-gradient(
+          135deg,
+          var(--accent-primary),
+          var(--accent-secondary)
+        );
+        --webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -1px;
+      }
+      .menu-btn {
+        width: 40px;
+        height: 40px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--bg-tertiary);
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 5px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      .menu-btn:hover {
+        background: var(--bg-tertiary);
+        transform: scale(1.05);
+      }
+      .menu-btn span {
+        display: block;
+        width: 20px;
+        height: 2px;
+        background: var(--text-primary);
+        border-radius: 2px;
+        transition: all 0.3s ease;
+      }
+      .menu-btn.active span:nth-child(1) {
+        transform: rotate(45deg) translate(5px, 5px);
+      }
+      .menu-btn.active span:nth-child(2) {
+        opacity: 0;
+      }
+      .menu-btn.active span:nth-child(3) {
+        transform: rotate(-45deg) translate(5px, -5px);
+      }
+      .main-display {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        position: relative;
+      }
+      .gem-container {
+        position: relative;
+        width: var(--gem-size);
+        height: var(--gem-size);
+        margin-bottom: 40px;
+      }
+      .gem {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        transform-style: preserve-3d;
+        animation: float 6s ease-in-out infinite;
+      }
+      @keyframes float {
+        0%,
+        100% {
+          transform: translateY(0px) rotateX(10deg) rotateY(0deg);
+        }
+        50% {
+          transform: translateY(-20px) rotateX(15deg) rotateY(180deg);
+        }
+      }
+      .gem-face {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.3),
+          rgba(255, 255, 255, 0.05)
+        );
+        clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
+        backdrop-filter: blur(10px);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        box-shadow:
+          inset 0 0 60px rgba(255, 255, 255, 0.1),
+          0 0 80px currentColor,
+          0 20px 40px rgba(0, 0, 0, 0.5);
+        transition: all 0.3s ease;
+      }
+      .gem-face::before {
+        content: "";
+        position: absolute;
+        inset: 10px;
+        background: currentColor;
+        clip-path: polygon(50% 5%, 95% 40%, 80% 95%, 20% 95%, 5% 40%);
+        opacity: 0.8;
+        filter: brightness(1.2);
+      }
+      .gem-reflection {
+        position: absolute;
+        top: 20%;
+        left: 30%;
+        width: 20%;
+        height: 15%;
+        background: linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.8),
+          transparent
+        );
+        border-radius: 50%;
+        filter: blur(5px);
+      }
+      .signal-rings {
+        position: absolute;
+        inset: -20%;
+        pointer-events: none;
+      }
+      .signal-ring {
+        position: absolute;
+        inset: 0;
+        border: 2px solid currentColor;
+        border-radius: 50%;
+        opacity: 0;
+        transform: scale(0.8);
+      }
+      .signal-ring.active {
+        animation: pulse-ring 2s ease-out infinite;
+      }
+      .signal-ring:nth-child(1) {
+        animation-delay: 0s;
+      }
+      .signal-ring:nth-child(2) {
+        animation-delay: 0.5s;
+      }
+      .signal-ring:nth-child(3) {
+        animation-delay: 1s;
+      }
+      @keyframes pulse-ring {
+        0% {
+          transform: scale(0.8);
+          opacity: 0.6;
+        }
+        100% {
+          transform: scale(1.5);
+          opacity: 0;
+        }
+      }
+      .value-readout {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .frequency-display {
+        font-size: 3rem;
+        font-weight: 200;
+        letter-spacing: -2px;
+        margin-bottom: 5px;
+        font-variant-numeric: tabular-nums;
+      }
+      .frequency-display .unit {
+        font-size: 1rem;
+        color: var(--text-secondary);
+        margin-left: 5px;
+      }
+      .color-readout {
+        font-family: "Courier New", monospace;
+        font-size: 1rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 2px;
+      }
+      .ruler-strip {
+        width: 100%;
+        max-width: 600px;
+        background: var(--bg-secondary);
+        border-radius: 20px;
+        padding: 20px;
+        margin-bottom: 20px;
+        border: 1px solid var(--bg-tertiary);
+      }
+      .ruler-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+      .ruler-title {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: var(--text-secondary);
+      }
+      .ruler-toggle {
+        font-size: 0.75rem;
+        color: var(--accent-tertiary);
+        cursor: pointer;
+        background: none;
+        border: none;
+        text-decoration: underline;
+      }
+      .ruler-canvas-container {
+        position: relative;
+        height: 60px;
+        background: var(--bg-primary);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      #rulerCanvas {
+        width: 100%;
+        height: 100%;
+      }
+      .ruler-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 10px;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+      }
+      .controls {
+        width: 100%;
+        max-width: 600px;
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+      }
+      .control-btn {
+        flex: 1;
+        padding: 18px;
+        border-radius: 15px;
+        border: none;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+      .control-btn:active {
+        transform: scale(0.95);
+      }
+      .mic-btn {
+        background: linear-gradient(
+          135deg,
+          var(--accent-primary),
+          var(--accent-secondary)
+        );
+        color: white;
+        box-shadow: 0 10px 30px rgba(255, 0, 110, 0.3);
+      }
+      .mic-btn:hover {
+        box-shadow: 0 15px 40px rgba(255, 0, 110, 0.4);
+        transform: translateY(-2px);
+      }
+      .mic-btn.active {
+        animation: mic-pulse 1.5s ease-in-out infinite;
+      }
+      @keyframes mic-pulse {
+        0%,
+        100% {
+          box-shadow: 0 10px 30px rgba(255, 0, 110, 0.3);
+        }
+        50% {
+          box-shadow: 0 10px 40px rgba(255, 0, 110, 0.6);
+        }
+      }
+      .mic-btn .icon {
+        font-size: 1.5rem;
+      }
+      .mode-btn {
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        border: 1px solid var(--bg-tertiary);
+      }
+      .mode-btn:hover {
+        background: var(--bg-tertiary);
+      }
+      .side-menu {
+        position: fixed;
+        top: 0;
+        right: -100%;
+        width: 100%;
+        max-width: 400px;
+        height: 100vh;
+        background: var(--bg-secondary);
+        border-left: 1px solid var(--bg-tertiary);
+        z-index: 200;
+        transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow-y: auto;
+        padding: 80px 20px 100px;
+      }
+      .side-menu.open {
+        right: 0;
+      }
+      .menu-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(5px);
+        z-index: 150;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+      }
+      .menu-overlay.active {
+        opacity: 1;
+        pointer-events: all;
+      }
+      .menu-section {
+        margin-bottom: 30px;
+      }
+      .menu-section-title {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: var(--accent-secondary);
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .menu-section-title .lock-icon {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+      }
+      .preset-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .preset-card {
+        background: var(--bg-tertiary);
+        border: 1px solid transparent;
+        border-radius: 12px;
+        padding: 15px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
+      }
+      .preset-card:hover {
+        border-color: var(--accent-secondary);
+        transform: translateX(5px);
+      }
+      .preset-card.active {
+        border-color: var(--accent-primary);
+        background: rgba(255, 0, 110, 0.1);
+      }
+      .preset-card.premium::after {
+        content: "★";
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        color: gold;
+        font-size: 1.2rem;
+      }
+      .preset-name {
+        font-weight: 600;
+        margin-bottom: 5px;
+      }
+      .preset-key {
+        font-family: monospace;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        word-break: break-all;
+      }
+      .preset-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+      }
+      .preset-btn {
+        flex: 1;
+        padding: 8px;
+        border: 1px solid var(--bg-tertiary);
+        background: transparent;
+        color: var(--text-secondary);
+        border-radius: 6px;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .preset-btn:hover {
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+      }
+      .save-new-btn {
+        width: 100%;
+        padding: 15px;
+        background: linear-gradient(
+          135deg,
+          var(--accent-secondary),
+          var(--accent-tertiary)
+        );
+        border: none;
+        border-radius: 12px;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 10px;
+        transition: all 0.3s;
+      }
+      .save-new-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(131, 56, 236, 0.3);
+      }
+      .save-new-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+      .advanced-editor {
+        background: var(--bg-primary);
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 20px;
+      }
+      .stop-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        background: var(--bg-secondary);
+        margin-bottom: 8px;
+        border-radius: 8px;
+        font-size: 0.8rem;
+      }
+      .stop-position {
+        width: 50px;
+        background: var(--bg-tertiary);
+        border: 1px solid transparent;
+        color: var(--text-primary);
+        padding: 5px;
+        border-radius: 4px;
+        text-align: center;
+      }
+      .stop-color {
+        width: 30px;
+        height: 25px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .stop-freq {
+        flex: 1;
+        background: var(--bg-tertiary);
+        border: 1px solid transparent;
+        color: var(--text-primary);
+        padding: 5px;
+        border-radius: 4px;
+      }
+      .stop-delete {
+        background: var(--accent-primary);
+        border: none;
+        color: white;
+        width: 25px;
+        height: 25px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+        line-height: 1;
+      }
+      .add-stop-btn {
+        width: 100%;
+        padding: 12px;
+        background: transparent;
+        border: 2px dashed var(--bg-tertiary);
+        color: var(--text-secondary);
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        margin-top: 10px;
+      }
+      .add-stop-btn:hover {
+        border-color: var(--accent-secondary);
+        color: var(--accent-secondary);
+      }
+      .setting-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 0;
+        border-bottom: 1px solid var(--bg-tertiary);
+      }
+      .setting-label {
+        font-size: 0.9rem;
+      }
+      .setting-control {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      input[type="range"] {
+        width: 120px;
+        height: 4px;
+        background: var(--bg-tertiary);
+        border-radius: 2px;
+        outline: none;
+        --webkit-appearance: none;
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 16px;
+        height: 16px;
+        background: var(--accent-secondary);
+        border-radius: 50%;
+        cursor: pointer;
+      }
+      .toggle-switch {
+        width: 50px;
+        height: 28px;
+        background: var(--bg-tertiary);
+        border-radius: 14px;
+        position: relative;
+        cursor: pointer;
+        transition: background 0.3s;
+      }
+      .toggle-switch.active {
+        background: var(--accent-secondary);
+      }
+      .toggle-switch::after {
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 24px;
+        height: 24px;
+        background: white;
+        border-radius: 50%;
+        transition: transform 0.3s;
+      }
+      .toggle-switch.active::after {
+        transform: translateX(22px);
+      }
+      .premium-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.9);
+        background: var(--bg-secondary);
+        border: 1px solid var(--bg-tertiary);
+        border-radius: 20px;
+        padding: 30px;
+        max-width: 350px;
+        width: 90%;
+        z-index: 300;
+        opacity: 0;
+        pointer-events: none;
+        transition: all 0.3s ease;
+        text-align: center;
+      }
+      .premium-modal.active {
+        opacity: 1;
+        pointer-events: all;
+        transform: translate(-50%, -50%) scale(1);
+      }
+      .premium-icon {
+        font-size: 3rem;
+        margin-bottom: 15px;
+      }
+      .premium-title {
+        font-size: 1.3rem;
+        margin-bottom: 10px;
+      }
+      .premium-text {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin-bottom: 20px;
+        line-height: 1.5;
+      }
+      .premium-btn {
+        width: 100%;
+        padding: 15px;
+        background: linear-gradient(135deg, gold, orange);
+        border: none;
+        border-radius: 12px;
+        color: #000;
+        font-weight: 700;
+        font-size: 1rem;
+        cursor: pointer;
+        margin-bottom: 10px;
+      }
+      .premium-btn.secondary {
+        background: transparent;
+        border: 1px solid var(--bg-tertiary);
+        color: var(--text-secondary);
+      }
+      .toast {
+        position: fixed;
+        bottom: 100px;
+        left: 50%;
+        transform: translateX(-50%) translateY(100px);
+        background: var(--bg-secondary);
+        border: 1px solid var(--bg-tertiary);
+        padding: 15px 25px;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        z-index: 400;
+        opacity: 0;
+        transition: all 0.3s ease;
+        pointer-events: none;
+      }
+      .toast.show {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
+
+      /* Image Scanner Styles */
+      .image-scanner-section {
+        width: 100%;
+        max-width: 600px;
+        background: var(--bg-secondary);
+        border-radius: 20px;
+        padding: 20px;
+        margin-bottom: 20px;
+        border: 1px solid var(--bg-tertiary);
+        display: none;
+      }
+      .image-scanner-section.active {
+        display: block;
+      }
+      .scanner-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+      .scanner-title {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: var(--text-secondary);
+      }
+      .scanner-canvas-container {
+        position: relative;
+        width: 100%;
+        height: 250px;
+        background: var(--bg-primary);
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 15px;
+      }
+      #scannerCanvas {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+      .scanner-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 15px;
+      }
+      .scanner-btn {
+        flex: 1;
+        min-width: 70px;
+        padding: 10px;
+        background: var(--bg-tertiary);
+        border: 1px solid transparent;
+        color: var(--text-secondary);
+        border-radius: 8px;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: center;
+      }
+      .scanner-btn:hover {
+        border-color: var(--accent-secondary);
+        color: var(--text-primary);
+      }
+      .scanner-btn.active {
+        background: var(--accent-secondary);
+        color: white;
+        border-color: var(--accent-secondary);
+      }
+      .file-input-wrapper {
+        position: relative;
+        overflow: hidden;
+        display: inline-block;
+        flex: 2;
+      }
+      .file-input-wrapper input[type="file"] {
+        position: absolute;
+        left: -9999px;
+      }
+      .file-input-label {
+        display: block;
+        padding: 10px;
+        background: var(--accent-tertiary);
+        color: white;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .file-input-label:hover {
+        background: #2a75e6;
+        transform: translateY(-2px);
+      }
+      .camera-btn {
+        flex: 1;
+        padding: 10px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--accent-tertiary);
+        color: var(--accent-tertiary);
+        border-radius: 8px;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .camera-btn:hover {
+        background: var(--accent-tertiary);
+        color: white;
+      }
+      .scan-speed-control {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 10px;
+      }
+      .scan-speed-control label {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        white-space: nowrap;
+      }
+      .scan-speed-control input[type="range"] {
+        flex: 1;
+      }
+      .pixel-info {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 10px;
+        font-family: monospace;
+      }
+      #videoElement {
+        display: none;
+      }
+      .close-scanner-btn {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 5px;
+        line-height: 1;
+      }
+      .close-scanner-btn:hover {
+        color: var(--text-primary);
+      }
+
+      @media (max-width: 480px) {
+        .frequency-display {
+          font-size: 2.5rem;
+        }
+        .controls {
+          flex-direction: column;
+        }
+        .control-btn {
+          flex-direction: row;
+          justify-content: center;
+        }
+        .scanner-canvas-container {
+          height: 200px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-container">
+      <header class="header">
+        <div class="logo">ChromaTone</div>
+        <button class="menu-btn" id="menuBtn" onclick="toggleMenu()">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </header>
+
+      <main class="main-display">
+        <div class="gem-container">
+          <div class="signal-rings" id="signalRings">
+            <div class="signal-ring"></div>
+            <div class="signal-ring"></div>
+            <div class="signal-ring"></div>
+          </div>
+          <div class="gem" id="gem" style="color: #ff006e">
+            <div class="gem-face"></div>
+            <div class="gem-reflection"></div>
+          </div>
+        </div>
+
+        <div class="value-readout">
+          <div class="frequency-display" id="freqDisplay">
+            440<span class="unit">Hz</span>
+          </div>
+          <div class="color-readout" id="colorDisplay">#FF006E</div>
+        </div>
+
+        <div class="ruler-strip">
+          <div class="ruler-header">
+            <span class="ruler-title">Modal Position</span>
+            <button class="ruler-toggle" onclick="toggleRulerView()">
+              Hide Visualization
+            </button>
+          </div>
+          <div class="ruler-canvas-container">
+            <canvas id="rulerCanvas"></canvas>
+          </div>
+          <div class="ruler-labels">
+            <span>0%</span>
+            <span>25%</span>
+            <span>50%</span>
+            <span>75%</span>
+            <span>100%</span>
+          </div>
+        </div>
+
+        <!-- Image Scanner Section -->
+        <div class="image-scanner-section" id="imageScannerSection">
+          <div class="scanner-header">
+            <span class="scanner-title">Image Translator</span>
+            <button class="close-scanner-btn" onclick="closeImageScanner()">
+              ×
+            </button>
+          </div>
+          <div class="scanner-canvas-container">
+            <canvas id="scannerCanvas"></canvas>
+            <video id="videoElement" autoplay playsinline></video>
+          </div>
+          <div class="scanner-controls">
+            <div class="file-input-wrapper">
+              <input
+                type="file"
+                id="imageInput"
+                accept="image/*"
+                onchange="handleImageUpload(event)"
+              />
+              <label for="imageInput" class="file-input-label"
+                >📁 Load Image</label
+              >
+            </div>
+            <button class="camera-btn" onclick="toggleCamera()">
+              📷 Camera
+            </button>
+          </div>
+          <div class="scanner-controls">
+            <button
+              class="scanner-btn active"
+              id="scanHorizontal"
+              onclick="setScanMode('horizontal')"
+            >
+              Horizontal
+            </button>
+            <button
+              class="scanner-btn"
+              id="scanVertical"
+              onclick="setScanMode('vertical')"
+            >
+              Vertical
+            </button>
+            <button
+              class="scanner-btn"
+              id="scanDiagonal"
+              onclick="setScanMode('diagonal')"
+            >
+              Diagonal
+            </button>
+            <button
+              class="scanner-btn"
+              id="scanSpiral"
+              onclick="setScanMode('spiral')"
+            >
+              Spiral
+            </button>
+            <button
+              class="scanner-btn"
+              id="scanBounce"
+              onclick="setScanMode('bounce')"
+            >
+              Bounce
+            </button>
+          </div>
+          <div class="scan-speed-control">
+            <label>Scan Speed:</label>
+            <input type="range" id="scanSpeed" min="1" max="100" value="50" />
+          </div>
+          <div class="pixel-info">
+            <span id="cursorPos">X: 0 Y: 0</span>
+            <span id="pixelColor">RGB: 0, 0, 0</span>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button
+            class="control-btn mic-btn"
+            id="micBtn"
+            onclick="toggleMicrophone()"
+          >
+            <span class="icon">🎤</span>
+            <span>Listen</span>
+          </button>
+          <button
+            class="control-btn mode-btn"
+            id="imageModeBtn"
+            onclick="toggleImageMode()"
+          >
+            <span class="icon">🖼</span>
+            <span>Image → Sound</span>
+          </button>
+        </div>
+      </main>
+    </div>
+
+    <div class="menu-overlay" id="menuOverlay" onclick="toggleMenu()"></div>
+
+    <nav class="side-menu" id="sideMenu">
+      <div class="menu-section">
+        <div class="menu-section-title">
+          Saved Modes <span class="lock-icon" id="presetLock">🔒</span>
+        </div>
+        <div class="preset-list" id="presetList"></div>
+        <button
+          class="save-new-btn"
+          id="savePresetBtn"
+          onclick="saveCurrentPreset()"
+        >
+          Save Current Configuration
+        </button>
+      </div>
+
+      <div class="menu-section">
+        <div class="menu-section-title">Modal Substructure</div>
+        <div class="advanced-editor">
+          <div id="focalStopsList"></div>
+          <button class="add-stop-btn" onclick="addFocalStop()">
+            + Add Focal Stop
+          </button>
+        </div>
+      </div>
+
+      <div class="menu-section">
+        <div class="menu-section-title">Settings</div>
+        <div class="setting-row">
+          <span class="setting-label">Frequency Range</span>
+          <div class="setting-control">
+            <span style="font-size: 0.8rem; color: var(--text-muted)"
+              >20Hz - 20kHz</span
+            >
+          </div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Logarithmic Scale</span>
+          <div
+            class="toggle-switch active"
+            id="logToggle"
+            onclick="toggleLogarithmic()"
+          ></div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Show Signal Distribution</span>
+          <div
+            class="toggle-switch active"
+            id="signalToggle"
+            onclick="toggleSignalRings()"
+          ></div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Gem Animation</span>
+          <div
+            class="toggle-switch active"
+            id="animToggle"
+            onclick="toggleAnimation()"
+          ></div>
+        </div>
+      </div>
+      <div style="height: 100px"></div>
+    </nav>
+
+    <div class="premium-modal" id="premiumModal">
+      <div class="premium-icon">👑</div>
+      <div class="premium-title">Unlock Premium</div>
+      <div class="premium-text">
+        Save unlimited modal configurations and access advanced focal stop
+        editing. Support development and fund future innovations.
+      </div>
+      <button class="premium-btn" onclick="unlockPremium()">
+        Unlock for $4.99
+      </button>
+      <button class="premium-btn secondary" onclick="closePremium()">
+        Maybe Later
+      </button>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+      const state = {
+        currentMode: "mic",
+        rulerPosition: 50,
+        isMenuOpen: false,
+        isPremium: false,
+        showRuler: true,
+        logarithmic: true,
+        showSignalRings: true,
+        gemAnimation: true,
+        audio: {
+          context: null,
+          analyser: null,
+          microphone: null,
+          oscillator: null,
+          isListening: false,
+          isPlaying: false,
+        },
+        focalStops: [
+          { position: 0, color: "#FF006E", frequency: 20 },
+          { position: 20, color: "#8338EC", frequency: 200 },
+          { position: 40, color: "#3A86FF", frequency: 1000 },
+          { position: 60, color: "#06FFA5", frequency: 4000 },
+          { position: 80, color: "#FFBE0B", frequency: 10000 },
+          { position: 100, color: "#FB5607", frequency: 20000 },
+        ],
+        presets: [
+          {
+            id: "default",
+            name: "Chromatic Spectrum",
+            key: "FF006E8338EC3A86FF06FFA5FFBE0BFB5607",
+            stops: [
+              { position: 0, color: "#FF006E", frequency: 20 },
+              { position: 20, color: "#8338EC", frequency: 200 },
+              { position: 40, color: "#3A86FF", frequency: 1000 },
+              { position: 60, color: "#06FFA5", frequency: 4000 },
+              { position: 80, color: "#FFBE0B", frequency: 10000 },
+              { position: 100, color: "#FB5607", frequency: 20000 },
+            ],
+          },
+          {
+            id: "warm",
+            name: "Warm Analog",
+            key: "FF0000FF4500FFA500FFD700FFFF00",
+            stops: [
+              { position: 0, color: "#FF0000", frequency: 80 },
+              { position: 25, color: "#FF4500", frequency: 400 },
+              { position: 50, color: "#FFA500", frequency: 1200 },
+              { position: 75, color: "#FFD700", frequency: 3000 },
+              { position: 100, color: "#FFFF00", frequency: 8000 },
+            ],
+          },
+          {
+            id: "cool",
+            name: "Cool Digital",
+            key: "0000FF0080FF00FFFF80FF00FF00FF",
+            stops: [
+              { position: 0, color: "#0000FF", frequency: 60 },
+              { position: 25, color: "#0080FF", frequency: 500 },
+              { position: 50, color: "#00FFFF", frequency: 2000 },
+              { position: 75, color: "#80FF00", frequency: 6000 },
+              { position: 100, color: "#00FF00", frequency: 15000 },
+            ],
+          },
+        ],
+        savedPresets: [],
+        currentPresetId: "default",
+        scanner: {
+          image: null,
+          video: null,
+          isCameraActive: false,
+          mode: "horizontal",
+          cursor: { x: 0, y: 0 },
+          isScanning: false,
+          animationId: null,
+          speed: 0.5,
+          time: 0,
+          direction: 1,
+        },
+      };
+
+      // ==================== INITIALIZATION ====================
+      const rulerCanvas = document.getElementById("rulerCanvas");
+      const rulerCtx = rulerCanvas.getContext("2d");
+      const scannerCanvas = document.getElementById("scannerCanvas");
+      const scannerCtx = scannerCanvas.getContext("2d");
+      const gem = document.getElementById("gem");
+      const signalRings = document.querySelectorAll(".signal-ring");
+
+      function init() {
+        resizeCanvases();
+        renderPresets();
+        renderFocalStops();
+        updateDisplay();
+
+        const saved = localStorage.getItem("chromatone_premium");
+        if (saved === "true") {
+          state.isPremium = true;
+          updatePresetLock();
+        }
+
+        const savedPresets = localStorage.getItem("chromatone_presets");
+        if (savedPresets) {
+          state.savedPresets = JSON.parse(savedPresets);
+          renderPresets();
+        }
+
+        document.getElementById("scanSpeed").addEventListener("input", (e) => {
+          state.scanner.speed = e.target.value / 100;
+        });
+      }
+
+      function resizeCanvases() {
+        const rulerContainer = rulerCanvas.parentElement;
+        rulerCanvas.width = rulerContainer.offsetWidth;
+        rulerCanvas.height = rulerContainer.offsetHeight;
+
+        const scannerContainer = scannerCanvas.parentElement;
+        scannerCanvas.width = scannerContainer.offsetWidth;
+        scannerCanvas.height = scannerContainer.offsetHeight;
+
+        drawRuler();
+        if (state.scanner.image || state.scanner.isCameraActive) {
+          drawScanner();
+        }
+      }
+
+      window.addEventListener("resize", resizeCanvases);
+
+      // ==================== MATH UTILITIES ====================
+      function interpolateColor(color1, color2, factor) {
+        const hex2rgb = (hex) => ({
+          r: parseInt(hex.slice(1, 3), 16),
+          g: parseInt(hex.slice(3, 5), 16),
+          b: parseInt(hex.slice(5, 7), 16),
+        });
+        const c1 = hex2rgb(color1);
+        const c2 = hex2rgb(color2);
+        const r = Math.round(c1.r + (c2.r - c1.r) * factor);
+        const g = Math.round(c1.g + (c2.g - c1.g) * factor);
+        const b = Math.round(c1.b + (c2.b - c1.b) * factor);
+        return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+      }
+
+      function interpolateFreq(f1, f2, factor) {
+        if (state.logarithmic) {
+          const log1 = Math.log2(f1);
+          const log2 = Math.log2(f2);
+          return Math.pow(2, log1 + (log2 - log1) * factor);
+        }
+        return f1 + (f2 - f1) * factor;
+      }
+
+      function getValueAtPosition(position) {
+        const stops = [...state.focalStops].sort(
+          (a, b) => a.position - b.position,
+        );
+
+        if (position <= stops[0].position) {
+          return { color: stops[0].color, frequency: stops[0].frequency };
+        }
+        if (position >= stops[stops.length - 1].position) {
+          return {
+            color: stops[stops.length - 1].color,
+            frequency: stops[stops.length - 1].frequency,
+          };
+        }
+
+        for (let i = 0; i < stops.length - 1; i++) {
+          if (
+            position >= stops[i].position &&
+            position <= stops[i + 1].position
+          ) {
+            const range = stops[i + 1].position - stops[i].position;
+            const factor =
+              range === 0 ? 0 : (position - stops[i].position) / range;
+            return {
+              color: interpolateColor(
+                stops[i].color,
+                stops[i + 1].color,
+                factor,
+              ),
+              frequency: interpolateFreq(
+                stops[i].frequency,
+                stops[i + 1].frequency,
+                factor,
+              ),
+            };
+          }
+        }
+
+        return { color: stops[0].color, frequency: stops[0].frequency };
+      }
+
+      function positionFromFrequency(freq) {
+        const stops = [...state.focalStops].sort(
+          (a, b) => a.position - b.position,
+        );
+
+        for (let i = 0; i < stops.length - 1; i++) {
+          const f1 = stops[i].frequency;
+          const f2 = stops[i + 1].frequency;
+
+          if (freq >= Math.min(f1, f2) && freq <= Math.max(f1, f2)) {
+            if (state.logarithmic) {
+              const log1 = Math.log2(f1);
+              const log2 = Math.log2(f2);
+              const logFreq = Math.log2(freq);
+              const factor = (logFreq - log1) / (log2 - log1);
+              return (
+                stops[i].position +
+                factor * (stops[i + 1].position - stops[i].position)
+              );
+            } else {
+              const factor = (freq - f1) / (f2 - f1);
+              return (
+                stops[i].position +
+                factor * (stops[i + 1].position - stops[i].position)
+              );
+            }
+          }
+        }
+
+        return 0;
+      }
+
+      function colorDistance(hex1, hex2) {
+        const rgb1 = [
+          parseInt(hex1.slice(1, 3), 16),
+          parseInt(hex1.slice(3, 5), 16),
+          parseInt(hex1.slice(5, 7), 16),
+        ];
+        const rgb2 = [
+          parseInt(hex2.slice(1, 3), 16),
+          parseInt(hex2.slice(3, 5), 16),
+          parseInt(hex2.slice(5, 7), 16),
+        ];
+        return Math.sqrt(
+          Math.pow(rgb1[0] - rgb2[0], 2) +
+            Math.pow(rgb1[1] - rgb2[1], 2) +
+            Math.pow(rgb1[2] - rgb2[2], 2),
+        );
+      }
+
+      function findClosestColorPosition(targetColor) {
+        let minDist = Infinity;
+        let closestPos = 0;
+
+        for (let pos = 0; pos <= 100; pos += 0.5) {
+          const val = getValueAtPosition(pos);
+          const dist = colorDistance(targetColor, val.color);
+          if (dist < minDist) {
+            minDist = dist;
+            closestPos = pos;
+          }
+        }
+
+        return closestPos;
+      }
+
+      // ==================== DISPLAY ====================
+      function updateDisplay() {
+        const values = getValueAtPosition(state.rulerPosition);
+
+        gem.style.color = values.color;
+
+        document.getElementById("freqDisplay").innerHTML =
+          Math.round(values.frequency) + '<span class="unit">Hz</span>';
+        document.getElementById("colorDisplay").textContent =
+          values.color.toUpperCase();
+
+        signalRings.forEach((ring) => {
+          ring.style.borderColor = values.color;
+          if (
+            state.showSignalRings &&
+            (state.audio.isListening || state.scanner.isScanning)
+          ) {
+            ring.classList.add("active");
+          } else {
+            ring.classList.remove("active");
+          }
+        });
+
+        if (state.audio.isPlaying && state.audio.oscillator) {
+          state.audio.oscillator.frequency.setTargetAtTime(
+            values.frequency,
+            state.audio.context.currentTime,
+            0.1,
+          );
+        }
+
+        drawRuler();
+      }
+
+      function drawRuler() {
+        if (!state.showRuler) {
+          rulerCtx.clearRect(0, 0, rulerCanvas.width, rulerCanvas.height);
+          return;
+        }
+
+        const ctx = rulerCtx;
+        const w = rulerCanvas.width;
+        const h = rulerCanvas.height;
+
+        ctx.clearRect(0, 0, w, h);
+
+        const gradient = ctx.createLinearGradient(0, 0, w, 0);
+        const stops = [...state.focalStops].sort(
+          (a, b) => a.position - b.position,
+        );
+        stops.forEach((stop) => {
+          gradient.addColorStop(stop.position / 100, stop.color);
+        });
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, h * 0.4, w, h * 0.2);
+
+        stops.forEach((stop) => {
+          const x = (stop.position / 100) * w;
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(x - 1, h * 0.3, 2, h * 0.4);
+        });
+
+        const cursorX = (state.rulerPosition / 100) * w;
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(cursorX, 0);
+        ctx.lineTo(cursorX, h);
+        ctx.stroke();
+
+        ctx.shadowColor = getValueAtPosition(state.rulerPosition).color;
+        ctx.shadowBlur = 20;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+      // ==================== MICROPHONE ====================
+      async function toggleMicrophone() {
+        const btn = document.getElementById("micBtn");
+
+        if (state.audio.isListening) {
+          stopMicrophone();
+          btn.classList.remove("active");
+          btn.innerHTML = '<span class="icon">🎤</span><span>Listen</span>';
+          showToast("Microphone stopped");
+        } else {
+          try {
+            await initAudio();
+            await startMicrophone();
+            btn.classList.add("active");
+            btn.innerHTML = '<span class="icon">⏹</span><span>Stop</span>';
+            showToast("Listening...");
+          } catch (err) {
+            console.error("Mic error:", err);
+            showToast("Microphone access denied");
+          }
+        }
+      }
+
+      async function initAudio() {
+        if (!state.audio.context) {
+          state.audio.context = new (
+            window.AudioContext || window.webkitAudioContext
+          )();
+        }
+        if (state.audio.context.state === "suspended") {
+          await state.audio.context.resume();
+        }
+      }
+
+      async function startMicrophone() {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: false,
+            autoGainControl: false,
+            noiseSuppression: false,
+          },
+        });
+
+        state.audio.microphone =
+          state.audio.context.createMediaStreamSource(stream);
+        state.audio.analyser = state.audio.context.createAnalyser();
+        state.audio.analyser.fftSize = 4096;
+        state.audio.analyser.smoothingTimeConstant = 0.8;
+
+        state.audio.microphone.connect(state.audio.analyser);
+        state.audio.isListening = true;
+
+        analyzeLoop();
+      }
+
+      function stopMicrophone() {
+        if (state.audio.microphone) {
+          state.audio.microphone.mediaStream
+            .getTracks()
+            .forEach((track) => track.stop());
+          state.audio.microphone.disconnect();
+          state.audio.microphone = null;
+        }
+        state.audio.isListening = false;
+      }
+
+      function analyzeLoop() {
+        if (!state.audio.isListening) return;
+
+        const analyser = state.audio.analyser;
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Float32Array(bufferLength);
+        const timeArray = new Float32Array(bufferLength);
+
+        analyser.getFloatFrequencyData(dataArray);
+        analyser.getFloatTimeDomainData(timeArray);
+
+        const frequency = detectPitch(
+          timeArray,
+          state.audio.context.sampleRate,
+        );
+
+        if (frequency > 0 && frequency < 20000) {
+          const targetPosition = positionFromFrequency(frequency);
+
+          state.rulerPosition += (targetPosition - state.rulerPosition) * 0.3;
+          state.rulerPosition = Math.max(0, Math.min(100, state.rulerPosition));
+
+          updateDisplay();
+        }
+
+        requestAnimationFrame(analyzeLoop);
+      }
+
+      function detectPitch(buffer, sampleRate) {
+        const SIZE = buffer.length;
+        let rms = 0;
+
+        for (let i = 0; i < SIZE; i++) {
+          const val = buffer[i];
+          rms += val * val;
+        }
+        rms = Math.sqrt(rms / SIZE);
+
+        if (rms < 0.01) return 0;
+
+        let r1 = 0,
+          r2 = SIZE - 1,
+          thres = 0.2;
+        for (let i = 0; i < SIZE / 2; i++) {
+          if (Math.abs(buffer[i]) < thres) {
+            r1 = i;
+            break;
+          }
+        }
+        for (let i = 1; i < SIZE / 2; i++) {
+          if (Math.abs(buffer[SIZE - i]) < thres) {
+            r2 = SIZE - i;
+            break;
+          }
+        }
+
+        buffer = buffer.slice(r1, r2);
+        const c = new Array(SIZE).fill(0);
+
+        for (let i = 0; i < SIZE; i++) {
+          for (let j = 0; j < SIZE - i; j++) {
+            c[i] = c[i] + buffer[j] * buffer[j + i];
+          }
+        }
+
+        let d = 0;
+        while (c[d] > c[d + 1]) d++;
+        let maxval = -1,
+          maxpos = -1;
+        for (let i = d; i < SIZE; i++) {
+          if (c[i] > maxval) {
+            maxval = c[i];
+            maxpos = i;
+          }
+        }
+
+        let T0 = maxpos;
+
+        const x1 = c[T0 - 1],
+          x2 = c[T0],
+          x3 = c[T0 + 1];
+        const a = (x1 + x3 - 2 * x2) / 2;
+        const b = (x3 - x1) / 2;
+        if (a) T0 = T0 - b / (2 * a);
+
+        return sampleRate / T0;
+      }
+
+      // ==================== IMAGE SCANNER ====================
+      function toggleImageMode() {
+        const scannerSection = document.getElementById("imageScannerSection");
+        const btn = document.getElementById("imageModeBtn");
+
+        if (scannerSection.classList.contains("active")) {
+          closeImageScanner();
+        } else {
+          scannerSection.classList.add("active");
+          btn.classList.add("active");
+          state.currentMode = "image";
+          showToast("Image Scanner Active");
+
+          if (!state.scanner.image && !state.scanner.isCameraActive) {
+            createTestPattern();
+          }
+        }
+      }
+
+      function closeImageScanner() {
+        const scannerSection = document.getElementById("imageScannerSection");
+        const btn = document.getElementById("imageModeBtn");
+
+        scannerSection.classList.remove("active");
+        btn.classList.remove("active");
+        state.scanner.isScanning = false;
+
+        if (state.scanner.animationId) {
+          cancelAnimationFrame(state.scanner.animationId);
+        }
+
+        if (state.scanner.isCameraActive) {
+          stopCamera();
+        }
+
+        state.currentMode = "manual";
+      }
+
+      function createTestPattern() {
+        const w = scannerCanvas.width;
+        const h = scannerCanvas.height;
+
+        scannerCtx.fillStyle = "#000";
+        scannerCtx.fillRect(0, 0, w, h);
+
+        const gradient = scannerCtx.createLinearGradient(0, 0, w, h);
+        gradient.addColorStop(0, "#FF0000");
+        gradient.addColorStop(0.2, "#FF8000");
+        gradient.addColorStop(0.4, "#FFFF00");
+        gradient.addColorStop(0.6, "#00FF00");
+        gradient.addColorStop(0.8, "#0080FF");
+        gradient.addColorStop(1, "#8000FF");
+
+        scannerCtx.fillStyle = gradient;
+        scannerCtx.fillRect(0, 0, w, h);
+
+        state.scanner.image = scannerCtx.getImageData(0, 0, w, h);
+        state.scanner.isScanning = true;
+        startScanning();
+      }
+
+      function handleImageUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const img = new Image();
+        img.onload = () => {
+          state.scanner.image = img;
+          state.scanner.isCameraActive = false;
+          drawScanner();
+          state.scanner.isScanning = true;
+          startScanning();
+          showToast("Image loaded");
+        };
+        img.src = URL.createObjectURL(file);
+      }
+
+      async function toggleCamera() {
+        if (state.scanner.isCameraActive) {
+          stopCamera();
+        } else {
+          await startCamera();
+        }
+      }
+
+      async function startCamera() {
+        try {
+          const video = document.getElementById("videoElement");
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: "environment",
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+          });
+
+          video.srcObject = stream;
+          state.scanner.video = video;
+          state.scanner.isCameraActive = true;
+          state.scanner.image = null;
+
+          video.onloadedmetadata = () => {
+            state.scanner.isScanning = true;
+            startScanning();
+          };
+
+          showToast("Camera active");
+        } catch (err) {
+          console.error("Camera error:", err);
+          showToast("Camera access denied");
+        }
+      }
+
+      function stopCamera() {
+        const video = document.getElementById("videoElement");
+        if (video.srcObject) {
+          video.srcObject.getTracks().forEach((track) => track.stop());
+          video.srcObject = null;
+        }
+        state.scanner.isCameraActive = false;
+        state.scanner.video = null;
+      }
+
+      function drawScanner() {
+        const ctx = scannerCtx;
+        const w = scannerCanvas.width;
+        const h = scannerCanvas.height;
+
+        ctx.clearRect(0, 0, w, h);
+
+        if (state.scanner.isCameraActive && state.scanner.video) {
+          const video = state.scanner.video;
+          const scale = Math.min(w / video.videoWidth, h / video.videoHeight);
+          const x = (w - video.videoWidth * scale) / 2;
+          const y = (h - video.videoHeight * scale) / 2;
+          ctx.drawImage(
+            video,
+            x,
+            y,
+            video.videoWidth * scale,
+            video.videoHeight * scale,
+          );
+        } else if (state.scanner.image) {
+          if (state.scanner.image instanceof Image) {
+            const img = state.scanner.image;
+            const scale = Math.min(w / img.width, h / img.height);
+            const x = (w - img.width * scale) / 2;
+            const y = (h - img.height * scale) / 2;
+            ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+          }
+        }
+
+        drawCursor(ctx);
+        sampleAndUpdate();
+      }
+
+      function drawCursor(ctx) {
+        const x = state.scanner.cursor.x;
+        const y = state.scanner.cursor.y;
+
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x - 15, y);
+        ctx.lineTo(x + 15, y);
+        ctx.moveTo(x, y - 15);
+        ctx.lineTo(x, y + 15);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(x, y, 10, 0, Math.PI * 2);
+        ctx.strokeStyle = "#ff006e";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.shadowColor = "#ff006e";
+        ctx.shadowBlur = 20;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+
+      function sampleAndUpdate() {
+        const x = Math.floor(state.scanner.cursor.x);
+        const y = Math.floor(state.scanner.cursor.y);
+
+        try {
+          const pixel = scannerCtx.getImageData(x, y, 1, 1).data;
+          const hex = `#${pixel[0].toString(16).padStart(2, "0")}${pixel[1].toString(16).padStart(2, "0")}${pixel[2].toString(16).padStart(2, "0")}`;
+
+          document.getElementById("cursorPos").textContent = `X: ${x} Y: ${y}`;
+          document.getElementById("pixelColor").textContent =
+            `RGB: ${pixel[0]}, ${pixel[1]}, ${pixel[2]}`;
+
+          const targetPosition = findClosestColorPosition(hex);
+
+          state.rulerPosition += (targetPosition - state.rulerPosition) * 0.2;
+          state.rulerPosition = Math.max(0, Math.min(100, state.rulerPosition));
+
+          updateDisplay();
+        } catch (e) {}
+      }
+
+      function setScanMode(mode) {
+        state.scanner.mode = mode;
+
+        document
+          .querySelectorAll(".scanner-btn")
+          .forEach((btn) => btn.classList.remove("active"));
+        document
+          .getElementById("scan" + mode.charAt(0).toUpperCase() + mode.slice(1))
+          .classList.add("active");
+
+        state.scanner.time = 0;
+        state.scanner.direction = 1;
+      }
+
+      function startScanning() {
+        if (state.scanner.animationId) {
+          cancelAnimationFrame(state.scanner.animationId);
+        }
+
+        const w = scannerCanvas.width;
+        const h = scannerCanvas.height;
+
+        function scan() {
+          if (!state.scanner.isScanning) return;
+
+          state.scanner.time += state.scanner.speed * 0.02;
+
+          switch (state.scanner.mode) {
+            case "horizontal":
+              state.scanner.cursor.x = (state.scanner.time * 100) % w;
+              state.scanner.cursor.y = h / 2;
+              break;
+            case "vertical":
+              state.scanner.cursor.x = w / 2;
+              state.scanner.cursor.y = (state.scanner.time * 100) % h;
+              break;
+            case "diagonal":
+              const diag = (state.scanner.time * 100) % Math.max(w, h);
+              state.scanner.cursor.x = (diag / Math.max(w, h)) * w;
+              state.scanner.cursor.y = (diag / Math.max(w, h)) * h;
+              break;
+            case "spiral":
+              const angle = state.scanner.time * 5;
+              const radius = (state.scanner.time * 20) % (Math.min(w, h) / 2);
+              state.scanner.cursor.x = w / 2 + Math.cos(angle) * radius;
+              state.scanner.cursor.y = h / 2 + Math.sin(angle) * radius;
+              break;
+            case "bounce":
+              const bounceX =
+                (Math.sin(state.scanner.time * 2) * w) / 2 + w / 2;
+              const bounceY =
+                (Math.cos(state.scanner.time * 3) * h) / 2 + h / 2;
+              state.scanner.cursor.x = bounceX;
+              state.scanner.cursor.y = bounceY;
+              break;
+          }
+
+          state.scanner.cursor.x = Math.max(
+            0,
+            Math.min(w, state.scanner.cursor.x),
+          );
+          state.scanner.cursor.y = Math.max(
+            0,
+            Math.min(h, state.scanner.cursor.y),
+          );
+
+          drawScanner();
+          state.scanner.animationId = requestAnimationFrame(scan);
+        }
+
+        scan();
+      }
+      // ==================== MENU & PRESETS ====================
+      function toggleMenu() {
+        state.isMenuOpen = !state.isMenuOpen;
+        document
+          .getElementById("menuBtn")
+          .classList.toggle("active", state.isMenuOpen);
+        document
+          .getElementById("sideMenu")
+          .classList.toggle("open", state.isMenuOpen);
+        document
+          .getElementById("menuOverlay")
+          .classList.toggle("active", state.isMenuOpen);
+      }
+
+      function renderPresets() {
+        const container = document.getElementById("presetList");
+        container.innerHTML = "";
+
+        state.presets.forEach((preset) => {
+          const card = createPresetCard(preset, false);
+          container.appendChild(card);
+        });
+
+        state.savedPresets.forEach((preset) => {
+          const card = createPresetCard(preset, true);
+          container.appendChild(card);
+        });
+      }
+
+      function createPresetCard(preset, isUser) {
+        const div = document.createElement("div");
+        div.className = `preset-card ${preset.id === state.currentPresetId ? "active" : ""} ${!isUser && preset.id !== "default" && !state.isPremium ? "premium" : ""}`;
+        div.innerHTML = `
+                <div class="preset-name">${preset.name}</div>
+                <div class="preset-key">${preset.key}</div>
+                ${
+                  isUser
+                    ? `
+                    <div class="preset-actions">
+                        <button class="preset-btn" onclick="event.stopPropagation(); loadPreset('${preset.id}')">Load</button>
+                        <button class="preset-btn" onclick="event.stopPropagation(); deletePreset('${preset.id}')">Delete</button>
+                    </div>
+                `
+                    : ""
+                }
+            `;
+        div.onclick = () => {
+          if (!isUser && preset.id !== "default" && !state.isPremium) {
+            showPremiumModal();
+            return;
+          }
+          loadPreset(preset.id);
+        };
+        return div;
+      }
+
+      function loadPreset(id) {
+        const allPresets = [...state.presets, ...state.savedPresets];
+        const preset = allPresets.find((p) => p.id === id);
+        if (!preset) return;
+
+        state.currentPresetId = id;
+        state.focalStops = JSON.parse(JSON.stringify(preset.stops));
+
+        renderPresets();
+        renderFocalStops();
+        updateDisplay();
+        showToast(`Loaded: ${preset.name}`);
+      }
+
+      function saveCurrentPreset() {
+        if (!state.isPremium && state.savedPresets.length >= 1) {
+          showPremiumModal();
+          return;
+        }
+
+        const name = prompt("Name this configuration:");
+        if (!name) return;
+
+        const key = generateModalKey();
+        const newPreset = {
+          id: "user_" + Date.now(),
+          name: name,
+          key: key,
+          stops: JSON.parse(JSON.stringify(state.focalStops)),
+        };
+
+        state.savedPresets.push(newPreset);
+        localStorage.setItem(
+          "chromatone_presets",
+          JSON.stringify(state.savedPresets),
+        );
+
+        renderPresets();
+        showToast("Configuration saved!");
+      }
+
+      function deletePreset(id) {
+        state.savedPresets = state.savedPresets.filter((p) => p.id !== id);
+        localStorage.setItem(
+          "chromatone_presets",
+          JSON.stringify(state.savedPresets),
+        );
+        renderPresets();
+        showToast("Deleted");
+      }
+
+      function generateModalKey() {
+        const stops = [...state.focalStops].sort(
+          (a, b) => a.position - b.position,
+        );
+        let key = "";
+        for (let i = 0; i < 7; i++) {
+          if (stops[i]) {
+            key += stops[i].color.replace("#", "");
+          } else {
+            key += "000000";
+          }
+        }
+        return key;
+      }
+
+      function updatePresetLock() {
+        const lock = document.getElementById("presetLock");
+        const saveBtn = document.getElementById("savePresetBtn");
+
+        if (state.isPremium) {
+          lock.textContent = "🔓";
+          saveBtn.disabled = false;
+          saveBtn.textContent = "Save Current Configuration";
+        } else {
+          lock.textContent = "🔒";
+          saveBtn.disabled = state.savedPresets.length >= 1;
+          saveBtn.textContent =
+            state.savedPresets.length >= 1
+              ? "Unlock to Save More"
+              : "Save Current Configuration";
+        }
+      }
+
+      // ==================== FOCAL STOPS EDITOR ====================
+      function renderFocalStops() {
+        const container = document.getElementById("focalStopsList");
+        container.innerHTML = "";
+
+        state.focalStops.forEach((stop, index) => {
+          const div = document.createElement("div");
+          div.className = "stop-item";
+          div.innerHTML = `
+                    <input type="number" class="stop-position" value="${stop.position.toFixed(1)}" 
+                           onchange="updateStop(${index}, 'position', this.value)" min="0" max="100" step="0.1">
+                    <input type="color" class="stop-color" value="${stop.color}" 
+                           onchange="updateStop(${index}, 'color', this.value)">
+                    <input type="number" class="stop-freq" value="${Math.round(stop.frequency)}" 
+                           onchange="updateStop(${index}, 'frequency', this.value)" min="20" max="20000">
+                    <button class="stop-delete" onclick="removeStop(${index})">×</button>
+                `;
+          container.appendChild(div);
+        });
+      }
+
+      function updateStop(index, field, value) {
+        if (field === "position") value = parseFloat(value);
+        if (field === "frequency") value = parseFloat(value);
+        state.focalStops[index][field] = value;
+        updateDisplay();
+      }
+
+      function removeStop(index) {
+        if (state.focalStops.length > 2) {
+          state.focalStops.splice(index, 1);
+          renderFocalStops();
+          updateDisplay();
+        }
+      }
+
+      function addFocalStop() {
+        if (!state.isPremium && state.focalStops.length >= 6) {
+          showPremiumModal();
+          return;
+        }
+
+        const newPos =
+          state.focalStops.length > 0
+            ? Math.min(
+                100,
+                Math.max(...state.focalStops.map((s) => s.position)) + 10,
+              )
+            : 0;
+        state.focalStops.push({
+          position: newPos,
+          color: "#ffffff",
+          frequency: 1000,
+        });
+        renderFocalStops();
+        updateDisplay();
+      }
+
+      // ==================== SETTINGS ====================
+      function toggleRulerView() {
+        state.showRuler = !state.showRuler;
+        document.querySelector(".ruler-toggle").textContent = state.showRuler
+          ? "Hide Visualization"
+          : "Show Visualization";
+        drawRuler();
+      }
+
+      function toggleLogarithmic() {
+        state.logarithmic = !state.logarithmic;
+        document
+          .getElementById("logToggle")
+          .classList.toggle("active", state.logarithmic);
+        updateDisplay();
+      }
+
+      function toggleSignalRings() {
+        state.showSignalRings = !state.showSignalRings;
+        document
+          .getElementById("signalToggle")
+          .classList.toggle("active", state.showSignalRings);
+        updateDisplay();
+      }
+
+      function toggleAnimation() {
+        state.gemAnimation = !state.gemAnimation;
+        document
+          .getElementById("animToggle")
+          .classList.toggle("active", state.gemAnimation);
+        gem.style.animationPlayState = state.gemAnimation
+          ? "running"
+          : "paused";
+      }
+
+      // ==================== PREMIUM ====================
+      function showPremiumModal() {
+        document.getElementById("premiumModal").classList.add("active");
+      }
+
+      function closePremium() {
+        document.getElementById("premiumModal").classList.remove("active");
+      }
+
+      function unlockPremium() {
+        state.isPremium = true;
+        localStorage.setItem("chromatone_premium", "true");
+        updatePresetLock();
+        renderPresets();
+        closePremium();
+        showToast("Premium unlocked! Thank you for your support!");
+      }
+
+      // ==================== UTILITIES ====================
+      function showToast(message) {
+        const toast = document.getElementById("toast");
+        toast.textContent = message;
+        toast.classList.add("show");
+        setTimeout(() => toast.classList.remove("show"), 3000);
+      }
+
+      // Initialize
+      init();
+      updatePresetLock();
+    </script>
+  </body>
+</html>
